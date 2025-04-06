@@ -28,10 +28,9 @@ def get_graph_data():
     try:
         print("Received request data")
 
-        # TODO: Extract parameters from incoming request
-        year = 2010
-        operator = '>'
-        limit = 100
+        year = request.json.get('year')
+        operator = request.json.get('operator')
+        limit = request.json.get('limit')
         
         if year is not None and operator is not None:
             query = construct_query(year, operator, limit)

@@ -6,7 +6,7 @@ console.log("Visualization module loaded");
 const Visualization = (function () {
   // Default options
   const defaultOptions = {
-    showLabels: false,
+    showLabels: true,
     showRelationships: false,
     nodeSize: "small",
   };
@@ -112,36 +112,158 @@ const Visualization = (function () {
       const link = g
         .append("g")
         .attr("class", "links")
-        .selectAll("line")
+        .selectAll("g")
         .data(data.links)
         .enter()
+        .append("g");
+
+      link
         .append("line")
-        .attr("stroke", "#999")
+        .attr("stroke", (d) => (d.type === "Rating" ? "#999" : "red"))
         .attr("stroke-opacity", 0.6)
         .attr("stroke-width", 1);
 
+      link
+        .append("text")
+        .attr("class", "link-label")
+        .attr("text-anchor", "middle")
+        .attr("dy", (d) => (d.type === "Rating" ? -5 : 25))
+        .style("font-size", "10px")
+        .text((d) => (visualOptions.showRelationships ? d.type : ""));
+
       // Create nodes - all grey
+      let radius =
+        visualOptions.nodeSize === "small"
+          ? 3
+          : visualOptions.nodeSize === "medium"
+          ? 6
+          : 10;
+
       const node = g
         .append("g")
         .attr("class", "nodes")
-        .selectAll("circle")
+        .selectAll("g")
         .data(data.nodes)
         .enter()
-        .append("circle")
-        .attr("r", 5)
-        .attr("fill", "#888") // All nodes are grey
+        .append("g") // Create a group for each node
         .call(drag(simulation));
+
+      // Append a circle to each group
+      node
+        .append("circle")
+        .attr("class", "node")
+        .attr("r", (d) => (d.labels[0] === "Movie" ? 2 + radius : radius))
+        .attr("fill", (d) => (d.labels[0] === "Movie" ? "orange" : "blue"));
+
+      // Append a text element to each group
+      node
+        .append("text")
+        .attr("x", (d) => d.x || 0)
+        .attr("y", (d) => d.y || 0)
+        .attr("class", "node-label")
+        .attr("text-anchor", "middle") // Center Text
+        .style("font-size", "12px")
+        .attr("dy", 24) // Adjust vertical position
+        .text((d) =>
+          visualOptions.showLabels
+            ? d.labels[0] === "Movie"
+              ? d.properties.title
+              : d.id.replace("_", " ")
+            : ""
+        );
 
       // Update positions on tick
       simulation.on("tick", () => {
         link
+          .select("line")
           .attr("x1", (d) => d.source.x || 0)
           .attr("y1", (d) => d.source.y || 0)
           .attr("x2", (d) => d.target.x || 0)
           .attr("y2", (d) => d.target.y || 0);
 
-        node.attr("cx", (d) => d.x || 0).attr("cy", (d) => d.y || 0);
+        link
+          .select("text")
+          .attr("x", (d) => (d.source.x + d.target.x) / 2)
+          .attr("y", (d) => (d.source.y + d.target.y) / 2);
+
+        node
+          .select("circle")
+          .attr("cx", (d) => d.x || 0)
+          .attr("cy", (d) => d.y || 0);
+        node
+          .select("text")
+          .attr("x", (d) => d.x || 0)
+          .attr("y", (d) => d.y || 0);
       });
+
+      const legend = svg
+        .append("g")
+        .append("g")
+        .attr("class", "legend")
+        .attr("transform", "translate(20, 20)");
+
+      legend
+        .append("rect")
+        .attr("width", 110)
+        .attr("height", 130)
+        .attr("fill", "#FFE5B4")
+        .attr("stroke", "black")
+        .attr("stroke-width", 1)
+        .attr("opacity", 0.75)
+        .attr("rx", 5)
+        .attr("ry", 5);
+
+      // Add legend title
+      legend
+        .append("text")
+        .attr("x", 10)
+        .attr("y", 25)
+        .attr("font-weight", "bold")
+        .attr("font-size", "14px")
+        .text("Legend");
+
+      const legendData = [
+        { label: " - Movie", color: "orange", shape: "circle" },
+        { label: " - Person", color: "blue", shape: "circle" },
+        { label: " - Rating", color: "#999", shape: "line" },
+        { label: " - Tags", color: "red", shape: "line" },
+      ];
+
+      const legendItem = legend
+        .selectAll(".legend-item")
+        .data(legendData)
+        .enter()
+        .append("g")
+        .attr("class", "legend-item")
+        .attr("transform", (_, i) => `translate(15, ${40 + i * 20})`);
+
+      legendItem.each(function (d) {
+        if (d.shape === "line") {
+          d3.select(this)
+            .append("line")
+            .attr("x1", 0)
+            .attr("y1", 8)
+            .attr("x2", 20)
+            .attr("y2", 8)
+            .attr("stroke", d.color)
+            .attr("stroke-width", 2);
+        } else {
+          d3.select(this)
+            .append("circle")
+            .attr("cx", 8)
+            .attr("cy", 8)
+            .attr("r", 8)
+            .attr("fill", d.color);
+        }
+      });
+
+      legendItem
+        .append("text")
+        .attr("x", 25)
+        .attr("y", 12)
+        .attr("font-size", "12px")
+        .attr("fill", "#000")
+        .text((d) => d.label);
 
       console.log("Visualization rendered successfully");
     } catch (error) {
